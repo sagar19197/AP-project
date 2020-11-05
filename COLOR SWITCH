@@ -1,3 +1,8 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package javaapplication17;
 
 import javafx.animation.AnimationTimer;
@@ -20,6 +25,7 @@ public class JavaApplication17 extends Application {
 
     private Pane root;
     private Circle ball;
+    private Ball bali;          //ball
     private Node obstacle1;
     private AnimationTimer timer;
     private int ballJump=150;
@@ -28,8 +34,10 @@ public class JavaApplication17 extends Application {
          root=new Pane();
          root.setPrefSize(800,850);
          root.setStyle("-fx-background-color: black");
-         ball=newBall();
-        
+         bali=new Ball();
+         ball=bali.getBall();
+         
+         
          root.getChildren().add(ball);
          obstacle1=newobstacle1();
          root.getChildren().add(obstacle1);
@@ -46,11 +54,7 @@ public class JavaApplication17 extends Application {
          return root;
      }
     
-    private Circle newBall() {
-        Circle bal = new Circle(400,800, 13,Color.GREEN);
-        
-        return bal;
-    }
+   
     
     private void moveOb1(){
      
@@ -103,4 +107,25 @@ public class JavaApplication17 extends Application {
         launch(args);
     }
 
+}
+
+class Ball extends Application{
+    private Circle ball;
+    @Override
+    public void start(Stage stage) throws Exception 
+    {
+        
+    }
+    
+   Ball(){
+         ball=new Circle(400,800, 13,Color.GREEN);
+       
+   }
+   
+   public Circle getBall(){
+       return ball;
+   }
+   
+  
+    
 }
