@@ -14,6 +14,7 @@ import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
+import javafx.scene.transform.Rotate;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -22,110 +23,234 @@ import javafx.util.Duration;
  * @author saga
  */
 public class JavaApplication17 extends Application {
-
-    private Pane root;
-    private Circle ball;
-    private Ball bali;          //ball
-    private Node obstacle1;
-    private AnimationTimer timer;
-    private int ballJump=150;
-    
-     private Parent createContent() {
+     		
+   private Pane root;
+   private Ball ballb;          //ball
+  
+   private AnimationTimer timer;
+   private int ballJump=150;
+   private obstacle1 ob1;       //obstacle
+   
+   
+   private Parent createContent()
+   {
          root=new Pane();
-         root.setPrefSize(800,850);
+         root.setPrefSize(700,700);
          root.setStyle("-fx-background-color: black");
-         bali=new Ball();
-         ball=bali.getBall();
+         ballb = new Ball();
+        ob1=new obstacle1();
          
          
-         root.getChildren().add(ball);
-         obstacle1=newobstacle1();
-         root.getChildren().add(obstacle1);
-         
+         root.getChildren().add(ballb.getCircle());
+         ob1.addObstacle(root);
+       
          timer = new AnimationTimer() 
         {
             @Override
             public void handle(long now)
             {
-                moveOb1();
+               
+                ob1.roll();
             }
         };
          timer.start();
          return root;
      }
-    
    
+ 
     
-    private void moveOb1(){
-     
-        obstacle1.setRotate(obstacle1.getRotate()+2);
-        
-    }
     
-   private Circle newobstacle1(){
-       Circle ob=new Circle(400,300, 130,Color.GREEN);
-       ob.setStrokeWidth(10);
-        ob.setStyle("-fx-fill:linear-gradient( from 100.0% 100.0% to 100.0% 0.0%, rgb(77,102,204) 0.5," + "green" +" 0.5);");
-       ob.setStroke(Color.RED);
-       
-       return ob;
-   }
-    
-     @Override
-    public void start(Stage stage) throws Exception {
+   @Override
+    public void start(Stage stage) throws Exception 
+    {
     
         stage.setScene(new Scene(createContent()));
-       stage.setTitle("COLOR SWITCH");
-      Rectangle pathe=new Rectangle(ball.getCenterX(),ball.getCenterY()-ballJump,0.5,ballJump);
+        stage.setTitle("COLOR SWITCH");
+        Rectangle pathe=new Rectangle(ballb.getX(),ballb.getY()-ballJump,0.5,ballJump);
        
         PathTransition ballM=new PathTransition();
-        ballM.setNode(ball);
+        ballM.setNode(ballb.getCircle());
         ballM.setDuration(Duration.seconds(1.4));
         ballM.setPath(pathe);
         ballM.setCycleCount(PathTransition.INDEFINITE);
-        
-       
         stage.getScene().setOnKeyPressed(event -> {
             switch (event.getCode()) {
                 case W:
-                    ball.setFill(Color.BLUE);
-                  
-                   ball.setCenterX(ball.getCenterY() - 140);
+                 pathe.setTranslateY(pathe.getY()-ballJump);
+                 
+                     ballM.setPath(pathe);
+                     ballM.playFromStart();
                     break;
                 default:
+                    ballb.getCircle().setTranslateY(600);
                     break;
         }
         });
-      
-        ballM.play();
-       stage.show();
-       
-    }
-    
-    public static void main(String[] args){
         
-        launch(args);
-    }
+        stage.getScene().setOnKeyReleased(event ->
+        {
+            pathe.setTranslateY(-ballJump);
+                     ballM.setPath(pathe);
+                     ballM.playFromStart();
+        });
+        
+      
+       ballM.play();
+       stage.show();
 
+ }
+    
+
+        
+    public static void main(String[] args) 
+    {
+        launch(args); 
+    }
 }
 
-class Ball extends Application{
-    private Circle ball;
+class Ball extends Application
+{
+    private Circle c;
+    //centre coordinates
+    private int x;
+    private int y;
+    private char color;
+    
+   Ball()
+   {
+         c=new Circle(400,600, 13,Color.GREEN);
+         x=400;
+         y=700;
+         color = 'g';
+   }
+
+    public Circle getCircle() 
+    {
+        return c;
+    }
+
+    public int getX()
+    {
+        return x;
+    }
+
+    public void setColor(char color)
+    {
+        this.color = color;
+        switch (color) {
+            case 'r':
+                this.getCircle().setFill(Color.RED);
+                break;
+            case 'b':
+                this.getCircle().setFill(Color.BLUE);
+                break;
+            case 'g':
+                this.getCircle().setFill(Color.GREEN);
+                break;
+            default:
+                this.getCircle().setFill(Color.YELLOW);
+                break;
+        }
+    }
+
+    public int getY()
+    {
+        return y;
+    }
+
+    public void incrementY(int increment) 
+    {
+        this.getCircle().setTranslateY(this.getCircle().getTranslateY()+ increment);
+    }
+
+    public void setY()
+    {
+        this.getCircle().setTranslateY(600);
+    }
+    public char getColor() 
+    {
+        return color;
+    }
+
     @Override
     public void start(Stage stage) throws Exception 
     {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+}
+
+
+interface Obstacles {               //interface
+  
+  public void rotate();
+   public void colorDist();
+   public void colorWidth();
+   public void RotateSpeed(int i);
+   
+ }
+
+
+class obstacle1 extends Application implements Obstacles
+{
+@Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    
+    private Arc arch,arch2,arch3,arch4;
+   private Rotate r;
+    private AnimationTimer timer;
+    private int speed;
+    
+    obstacle1(){
+         arch= new Arc(400, 300, 100, 100,90,90);
+          arch.setStrokeWidth(15);
+         arch.setStroke(Color.BLUE);
+      arch2=new Arc(400,300,100, 100,90,-90)  ;
+       arch2.setStrokeWidth(15);
+         arch2.setStroke(Color.GREEN);
+      arch3=new Arc(400,300,100, 100,-90,90)  ;
+       arch3.setStrokeWidth(15);
+         arch3.setStroke(Color.YELLOW);
+      arch4=new Arc(400,300,100, 100,-90,-90)  ;
+       arch4.setStrokeWidth(15);
+         arch4.setStroke(Color.RED);
+         RotateSpeed(1);
+         rotate();
+    }
+    
+    public void addObstacle(Pane root){
+       root.getChildren().add(arch);
+       root.getChildren().add(arch2); 
+        root.getChildren().add(arch3);
+        root.getChildren().add(arch4);
+    }
+   
+    public void rotate(){
+        r=new Rotate();
+        r.setPivotX(400);
+        r.setPivotY(300);
+        arch.getTransforms().addAll(r);
+        arch2.getTransforms().addAll(r);
+        arch3.getTransforms().addAll(r);
+        arch4.getTransforms().addAll(r);
         
     }
     
-   Ball(){
-         ball=new Circle(400,800, 13,Color.GREEN);
-       
-   }
+    public void RotateSpeed(int i){
+        this.speed+=i;
+    }
    
-   public Circle getBall(){
-       return ball;
-   }
-   
-  
+    public void roll(){
+        r.setAngle(r.getAngle()+this.speed);
+    }
     
+    public void colorWidth(){
+        System.out.println(1);
+    }
+    public void colorDist(){
+        System.out.println(1);
+    }
+     
 }
