@@ -1,0 +1,106 @@
+package javaapplication17;
+
+import javafx.animation.AnimationTimer;
+import javafx.animation.PathTransition;
+import javafx.application.Application;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.*;
+import javafx.stage.Stage;
+import javafx.util.Duration;
+
+/**
+ *
+ * @author saga
+ */
+public class JavaApplication17 extends Application {
+
+    private Pane root;
+    private Circle ball;
+    private Node obstacle1;
+    private AnimationTimer timer;
+    private int ballJump=150;
+    
+     private Parent createContent() {
+         root=new Pane();
+         root.setPrefSize(800,850);
+         root.setStyle("-fx-background-color: black");
+         ball=newBall();
+        
+         root.getChildren().add(ball);
+         obstacle1=newobstacle1();
+         root.getChildren().add(obstacle1);
+         
+         timer = new AnimationTimer() 
+        {
+            @Override
+            public void handle(long now)
+            {
+                moveOb1();
+            }
+        };
+         timer.start();
+         return root;
+     }
+    
+    private Circle newBall() {
+        Circle bal = new Circle(400,800, 13,Color.GREEN);
+        
+        return bal;
+    }
+    
+    private void moveOb1(){
+     
+        obstacle1.setRotate(obstacle1.getRotate()+2);
+        
+    }
+    
+   private Circle newobstacle1(){
+       Circle ob=new Circle(400,300, 130,Color.GREEN);
+       ob.setStrokeWidth(10);
+        ob.setStyle("-fx-fill:linear-gradient( from 100.0% 100.0% to 100.0% 0.0%, rgb(77,102,204) 0.5," + "green" +" 0.5);");
+       ob.setStroke(Color.RED);
+       
+       return ob;
+   }
+    
+     @Override
+    public void start(Stage stage) throws Exception {
+    
+        stage.setScene(new Scene(createContent()));
+       stage.setTitle("COLOR SWITCH");
+      Rectangle pathe=new Rectangle(ball.getCenterX(),ball.getCenterY()-ballJump,0.5,ballJump);
+       
+        PathTransition ballM=new PathTransition();
+        ballM.setNode(ball);
+        ballM.setDuration(Duration.seconds(1.4));
+        ballM.setPath(pathe);
+        ballM.setCycleCount(PathTransition.INDEFINITE);
+        
+       
+        stage.getScene().setOnKeyPressed(event -> {
+            switch (event.getCode()) {
+                case W:
+                    ball.setFill(Color.BLUE);
+                  
+                   ball.setCenterX(ball.getCenterY() - 140);
+                    break;
+                default:
+                    break;
+        }
+        });
+      
+        ballM.play();
+       stage.show();
+       
+    }
+    
+    public static void main(String[] args){
+        
+        launch(args);
+    }
+
+}
