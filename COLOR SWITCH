@@ -1,120 +1,333 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ 
+
+AP PROJECT
+TEAM - ARPIT (2019153) AND SAGAR(2019197)
+NOTE - all the print statements,save and load buttons etc. 
+Are just  for checking their functionality and 
+will be modified in the final deadline
+
+we are implemeting save by file opener through text file,
+it will be changed, in final deadline.
+
  */
 package javaapplication17;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.List;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.animation.AnimationTimer;
-import javafx.animation.PathTransition;
 import javafx.application.Application;
-import javafx.scene.Node;
+import static javafx.application.Application.launch;
+import javafx.geometry.Pos;
+import javafx.geometry.VPos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import javafx.scene.transform.Rotate;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
-/**
- *
- * @author saga
- */
-public class JavaApplication17 extends Application {
-     		
-   private Pane root;
-   private Ball ballb;          //ball
-  
-   private AnimationTimer timer;
-   private int ballJump=150;
-   private obstacle1 ob1;       //obstacle
+
+public class JavaApplication17 extends Application {        // player class
+    private Stage stage;
+    
+    private MainPage mainpage;
+    
+    public void setStage(Stage stag){
+        stage=stag;
+    }
+    
+   @Override
+    public void start(Stage stage) throws Exception 
+    {   
+        setStage(stage);
+        mainpage=new MainPage(stage);        //main page
+        stage.show();
+ }
+    
+  public static void main(String[] args) 
+    {
+        launch(args); 
+    }
+}
+
+
+
+
+class GameApplication extends Application implements Cloneable{              //game class
+    
+    private Stage stage;
+    private Scene scene;
+    private Pane root;
+    private Ball ballb;          //ball
+    private Text confi;          //label for pause and play
+    private AnimationTimer timer;
    
+    List<Obstacles> allObstacle;       //all obstacles
+    private int count=0;
+    private int size=4;
+    private Obstacles present;
+    private Obstacles previous;
+    
+    private Button SaveD;
+    private SaveData saved;
+    private ResourceManager resources;
+    private boolean paused;
    
-   private Parent createContent()
-   {
+    private Star star;           //star
+    private Score score;         //score
+    private SwitchBall switchBall;   //SwitchBall
+    
+    private EndPage endpage;        //Endpage
+    
+   GameApplication(Stage stag,Scene s){
+       setStage(stag);
+       scene=s;
+       scene.setRoot(createContent());
+        
+       try {
+            start(stage);
+        } catch (Exception ex) {
+            Logger.getLogger(GameApplication.class.getName()).log(Level.SEVERE, null, ex);
+        }
+   }
+    
+    private Parent createContent()
+   {    
+       
          root=new Pane();
-         root.setPrefSize(700,700);
+         root.setPrefSize(800,800);
          root.setStyle("-fx-background-color: black");
          ballb = new Ball();
-        ob1=new obstacle1();
          
-         
-         root.getChildren().add(ballb.getCircle());
-         ob1.addObstacle(root);
+         allObstacle=new ArrayList<>();
+         generateObstacles(0,0);
+        
+         present = allObstacle.get(0);
+        previous = present;
+        
+        
+        SaveD=new Button("Save");
+       SaveD.setTextFill(Color.BLACK);
+       SaveD.setStyle("-fx-background-color: white");
+       SaveD.setTranslateX(730);
+       SaveD.setTranslateY(25);
        
+        confi=new Text("P :- PAUSE/PLAY"); //label
+        confi.setFont(Font.font("Verdana", FontWeight.BOLD, 15));
+        confi.setFill(Color.WHITE);
+        confi.setTextOrigin(VPos.TOP);
+        confi.setTranslateX(650);
+        
+        score=new Score(0);     //initial score
+        
+        star=present.getStar();   //star
+        switchBall = present.getSwitchBall(); //switch_ball
+        
+       paused=false;
+        
+         root.getChildren().add(ballb.getCircle());
+         root.getChildren().add(SaveD);
+         root.getChildren().add(confi);
+         root.getChildren().add(score.getScore());
+         
+        
          timer = new AnimationTimer() 
         {
             @Override
             public void handle(long now)
             {
+                
+                ballb.move();
+                rollObstacle();
+                setOutColor(ballb.getColor());
+                
+               if(present.out()==1 || (previous.out()==1 && previous!=present)){
+                out2();   
+                }
                
-                ob1.roll();
+                if(star.updateScore(ballb.getCircle(), score.getScore())){
+                  
+                  previous=present;
+                  count=(count+1);
+                  present=allObstacle.get(count);
+                  star=present.getStar(); 
+                  if(count==7){
+                      removeObstacle();
+                      count=3;
+                  }
+                  if(count==3){
+                   generateObstacles(-900,allObstacle.size());
+                     setY2(2*ballb.getY());
+                  }
+                }
+                if(switchBall.colorChange(ballb)){
+                   switchBall=present.getSwitchBall();
+                }
+                
+               
+                saved=new SaveData(ballb.getX(),ballb.getY());
             }
         };
          timer.start();
          return root;
      }
    
- 
+    public void paused(){
+        timer.stop();
+        paused=true;
+    }
+    public void played(){
+        timer.start();
+        paused=false;
+    }
+    public void setStage(Stage stag){
+        stage=stag;
+    }
+    public void out2(){
+        paused();
+        getScore().reduceScore(5); 
+        getBall().setBallStart(false);
+        moveObstacle(-80);
+        endpage=new EndPage(stage,this);
+    }
+    public Scene getScene(){
+        return scene;
+    }
+    public Pane getPage(){
+        return root;
+    }
+    public Score getScore(){
+        return score;
+    }
+    public Ball getBall(){
+        return ballb;
+    }
+    public void generateObstacles(double d,int start){
+        try {
+            allObstacle.add(new obstacle1(d));
+            allObstacle.add(new obstacle2(d-750));
+            allObstacle.add(getRandomObstacle(d-1200));     //random obstacle
+            allObstacle.add(getRandomObstacle(d-1750));     //random obstacle
+            for(int i=start;i<start+size;i++){
+                allObstacle.get(i).addObstacle(root);
+                allObstacle.get(i).setBall(ballb);
+            }
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            Logger.getLogger(GameApplication.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    public void moveObstacle(double d){
+        for(Obstacles o : allObstacle){
+            o.move(d);
+        }
+    }
+    public void rollObstacle(){
+        for(Obstacles o : allObstacle){
+            o.roll();
+        }
+    }
+    public void setY2(double d){
+        for(Obstacles o : allObstacle){
+            o.setY2(d);
+        }
+    }
+    public void removeObstacle(){
+        for(int i=0;i<4;i++){
+            allObstacle.remove(0);
+        }
+    }
+    public void setOutColor(char c){
+        for(Obstacles o : allObstacle){
+            o.setOutColor(c);
+        }
+    }
+   public Obstacles getRandomObstacle(double y) throws ClassNotFoundException, NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException{
+        Random rand =new Random();
+        int[] arr= {1,3,4,5,6};
+        int temp = rand.nextInt(5);
+        String ob_name = "javaapplication17.obstacle"+arr[temp];    //change class here inplace of javaaplication17
+        Class<?> c = Class.forName(ob_name);
+        Constructor<?> cons = c.getConstructor(double.class);
+        Object object = cons.newInstance(y);
+  
+    return (Obstacles) object;
+    }
     
+    @Override
+   public GameApplication clone(){
+       try{
+           GameApplication copy = (GameApplication) super.clone();
+           return copy;
+       }
+      catch (CloneNotSupportedException e) {
+            return null; // won't ever happen
+}
+   }
     
-   @Override
+    @Override
     public void start(Stage stage) throws Exception 
     {
-    
-        stage.setScene(new Scene(createContent()));
         stage.setTitle("COLOR SWITCH");
-        Rectangle pathe=new Rectangle(ballb.getX(),ballb.getY()-ballJump,0.5,ballJump);
+        
+        stage.getScene().setOnKeyPressed(event -> {                 //ball move when key pressed
+          switch (event.getCode()) {
+              case P : if(!paused){
+                           paused();
+                       }
+                       else{
+                            played();
+                        }
+                        break;
+              default:
+                    ballb.StartBall();
+                   
+                    moveObstacle(2*ballb.getY());
+                     break;
+          }
+        });
+        
+          
+       SaveD.setOnAction(event -> {                                 //save
        
-        PathTransition ballM=new PathTransition();
-        ballM.setNode(ballb.getCircle());
-        ballM.setDuration(Duration.seconds(1.4));
-        ballM.setPath(pathe);
-        ballM.setCycleCount(PathTransition.INDEFINITE);
-        stage.getScene().setOnKeyPressed(event -> {
-            switch (event.getCode()) {
-                case W:
-                 pathe.setTranslateY(pathe.getY()-ballJump);
-                 
-                     ballM.setPath(pathe);
-                     ballM.playFromStart();
-                    break;
-                default:
-                    ballb.getCircle().setTranslateY(600);
-                    break;
-        }
-        });
-        
-        stage.getScene().setOnKeyReleased(event ->
-        {
-            pathe.setTranslateY(-ballJump);
-                     ballM.setPath(pathe);
-                     ballM.playFromStart();
-        });
-        
-      
-       ballM.play();
-       stage.show();
-
- }
-    
-
-        
-    public static void main(String[] args) 
-    {
-        launch(args); 
+           timer.stop();
+       resources=new ResourceManager(stage,saved.getData());
+       resources.handle();
+       });
     }
+    
+    
+    
 }
 
-class Ball extends Application
+class Ball extends Application              //ball class
 {
     private Circle c;
     //centre coordinates
     private int x;
     private int y;
     private char color;
+    private final int ballJump;
+    private int speed;
+    private boolean ballStart;
+    private boolean up,down;
+    private double y_cond;
+    
     
    Ball()
    {
@@ -122,6 +335,11 @@ class Ball extends Application
          x=400;
          y=700;
          color = 'g';
+         ballStart=false;
+         ballJump=100;
+         up=false;
+         down=false;
+         speed=6;
    }
 
     public Circle getCircle() 
@@ -129,9 +347,9 @@ class Ball extends Application
         return c;
     }
 
-    public int getX()
+    public double getX()
     {
-        return x;
+        return c.getCenterX();
     }
 
     public void setColor(char color)
@@ -152,10 +370,15 @@ class Ball extends Application
                 break;
         }
     }
+    
+    public void StartBall(){
+        ballStart=true;
+        moveUp();
+    }
 
-    public int getY()
+    public double getY()
     {
-        return y;
+        return c.getTranslateY();
     }
 
     public void incrementY(int increment) 
@@ -165,13 +388,54 @@ class Ball extends Application
 
     public void setY()
     {
-        this.getCircle().setTranslateY(600);
+        this.getCircle().setTranslateY(0);
     }
     public char getColor() 
     {
         return color;
     }
-
+    
+    public void setCondition(){
+     
+        this.y_cond=getY()-ballJump;
+    }
+    
+    public void checkCondition(double yc){
+        if( yc < y_cond){
+        moveDown();
+        }
+    }
+    public void setBallStart(boolean res){
+        this.ballStart=res;
+    }
+    
+    public int getSpeed(){
+        return this.speed;
+    }
+    public void setSpeed(int i){
+       this.speed=i;
+    }
+    
+    public void moveUp(){
+        up=true;
+        down=false;
+        setCondition();
+    }
+    public void moveDown(){
+        down=true;
+        up=false;
+    }
+    public void move(){
+        if(ballStart){
+            if(up){
+                incrementY(-speed);
+                checkCondition(getY());
+            }
+            else{
+                incrementY(speed);
+            }
+        }
+    }
     @Override
     public void start(Stage stage) throws Exception 
     {
@@ -180,14 +444,26 @@ class Ball extends Application
 }
 
 
+
 interface Obstacles {               //interface
   
   public void rotate();
    public void colorDist();
    public void colorWidth();
    public void RotateSpeed(int i);
-   
- }
+  public int out();
+  public double getY();
+  public SwitchBall getSwitchBall();
+  public Star getStar();
+  public void addObstacle(Pane root);
+  public void setBall(Ball bll);
+  public void move(double s);
+  public void roll();
+  public void setOutColor(char c);
+  public void setY2(double y);
+}
+
+
 
 
 class obstacle1 extends Application implements Obstacles
@@ -200,57 +476,1092 @@ class obstacle1 extends Application implements Obstacles
     
     private Arc arch,arch2,arch3,arch4;
    private Rotate r;
-    private AnimationTimer timer;
+    private final int radius;
+    private final int width;
     private int speed;
+    private Ball ball;
+    private double y=0;
+    private double speedDown=100;
+    private final Star star;
+    private final SwitchBall switchball;
+    private double x_cor,y_cor;
+    private Arc arch_R1,arch_R2,arch_R3,arch_R4;
+    private char OutColor='g';
     
-    obstacle1(){
-         arch= new Arc(400, 300, 100, 100,90,90);
-          arch.setStrokeWidth(15);
-         arch.setStroke(Color.BLUE);
-      arch2=new Arc(400,300,100, 100,90,-90)  ;
-       arch2.setStrokeWidth(15);
-         arch2.setStroke(Color.GREEN);
-      arch3=new Arc(400,300,100, 100,-90,90)  ;
-       arch3.setStrokeWidth(15);
-         arch3.setStroke(Color.YELLOW);
-      arch4=new Arc(400,300,100, 100,-90,-90)  ;
-       arch4.setStrokeWidth(15);
-         arch4.setStroke(Color.RED);
-         RotateSpeed(1);
+    public obstacle1(double yy){
+        radius=150;
+        width=22;
+        x_cor=400;
+        y_cor=yy;
+        
+         arch_R1= new Arc(x_cor,y_cor, radius, radius,90,90);
+          arch_R1.setStrokeWidth(width);
+         arch_R1.setStroke(Color.BLUE);
+        
+      arch_R2=new Arc(x_cor,y_cor, radius, radius,90,-90)  ;
+       arch_R2.setStrokeWidth(width);
+         arch_R2.setStroke(Color.GREEN);
+      arch_R3=new Arc(x_cor,y_cor, radius, radius,-90,90)  ;
+       arch_R3.setStrokeWidth(width);
+         arch_R3.setStroke(Color.YELLOW);
+      arch_R4=new Arc(x_cor,y_cor ,radius, radius,-90,-90)  ;
+       arch_R4.setStrokeWidth(width);
+         arch_R4.setStroke(Color.RED);
+        
+       arch=arch_R1;                    //storing arch
+       arch2=arch_R2;
+       arch3=arch_R3;
+       arch4=arch_R4;
+       
+       star=new Star(x_cor,y_cor); 
+       switchball=new SwitchBall(y_cor-300);
+        RotateSpeed(1);
          rotate();
+      
     }
     
+@Override
     public void addObstacle(Pane root){
        root.getChildren().add(arch);
        root.getChildren().add(arch2); 
         root.getChildren().add(arch3);
         root.getChildren().add(arch4);
+        star.addStar(root);
+        switchball.addSwitchBall(root);
     }
-   
+ 
+@Override
     public void rotate(){
         r=new Rotate();
         r.setPivotX(400);
-        r.setPivotY(300);
+        r.setPivotY(y_cor);
         arch.getTransforms().addAll(r);
         arch2.getTransforms().addAll(r);
         arch3.getTransforms().addAll(r);
         arch4.getTransforms().addAll(r);
         
     }
+@Override
+    public void setBall(Ball bll){
+        this.ball=bll;
+    }
     
+@Override
     public void RotateSpeed(int i){
         this.speed+=i;
     }
    
+@Override
     public void roll(){
         r.setAngle(r.getAngle()+this.speed);
     }
     
+@Override
     public void colorWidth(){
         System.out.println(1);
     }
+@Override
     public void colorDist(){
         System.out.println(1);
     }
+@Override
+    public int out(){
+ 
+        if(ball.getCircle().getBoundsInParent().intersects(arch2.getBoundsInParent())){
+     // System.out.println("out");
+        return 0;
+    }
+        else if(outCondition2()) {
+           //System.out.println("FALSE");
+            return 1;
+        }
+        else {
+            return -1;
+        }
+    }
+    
+@Override
+    public double getY(){
+        return arch.getTranslateY();
+    }
+    public double getCenterY(){
+        return arch.getCenterY();
+    }
+    
+@Override
+    public Star getStar(){
+        return star;
+    }
+@Override
+    public SwitchBall getSwitchBall(){
+        return switchball;
+    }
+@Override
+    public void setOutColor(char c){
+        this.OutColor=c;
+         switch (OutColor) {
+            case 'r':
+                arch2=arch_R4;          //OUT COLOR
+                arch=arch_R1;
+                arch3=arch_R2;
+                arch4=arch_R3;
+                break;
+            case 'b':
+                arch2=arch_R1;          //OUT COLOR
+                arch=arch_R2;
+                arch3=arch_R3;
+                arch4=arch_R4;;
+                break;
+            case 'g':
+                arch2=arch_R2;          //OUT COLOR
+                arch=arch_R1;
+                arch3=arch_R3;
+                arch4=arch_R4;
+                break;
+            default:
+                arch2=arch_R3;          //OUT COLOR
+                arch=arch_R1;
+                arch3=arch_R2;
+                arch4=arch_R4;
+                break;
+        }
+    }
+    
+@Override
+    public void move(double s){
+        speedDown=Math.max(y-s,0);
+        arch.setTranslateY(arch.getTranslateY()+speedDown);
+        arch2.setTranslateY(arch2.getTranslateY()+speedDown);
+        arch3.setTranslateY(arch3.getTranslateY()+speedDown);
+        arch4.setTranslateY(arch4.getTranslateY()+speedDown);
+        star.moveStar(s);
+        switchball.move(s);
+        y=s;
+    }
+    
+@Override
+    public void setY2(double ry){
+        y=ry;
+    }
+    public void move2(double s){
+        arch.setTranslateY(s);
+        arch2.setTranslateY(s);
+        arch3.setTranslateY(s);
+        arch4.setTranslateY(s);
+    }
+    
+    public boolean outCondition2(){
+        double ball_c=ball.getCircle().getCenterY()+ball.getY();
+        double arch_c=getCenterY()+getY();
+       double temp=Math.abs(ball_c-arch_c);
+       double ang=r.getAngle()%360;
+       //System.out.println("tmep="+temp+" angle="+ang);
+      
+     if((ball.getCircle().getBoundsInParent().intersects(arch.getBoundsInParent()) || ball.getCircle().getBoundsInParent().intersects(arch3.getBoundsInParent()) || ball.getCircle().getBoundsInParent().intersects(arch4.getBoundsInParent()))){
+         if(temp>=135 && temp<=160){    
+         if(((ang>130 && ang<180) || (ang>310 && ang<360))){
+             if(ball.getCircle().getBoundsInParent().intersects(arch2.getBoundsInParent())){
+                 return false;
+             }
+             else{
+                 return true;
+             }
+            }
+      
+        else{
+            return true;
+            }
+        }
+         else{
+             return false;
+         }
+    }
+    
+    else{
+    return false;
+        }
+     }
+}
+
+class MainPage extends Application{
+    @Override
+    public void start(Stage stage) throws Exception 
+    {
+       
+      gameEnd().setOnAction(e -> {
+          stage.close();
+      });
      
+      gameStart().setOnAction(e -> {
+        game=new GameApplication(stage,scene);      
+    });
+    
+    }
+    private Scene scene;
+    private Stage stage;
+    private Button StartGame;
+    private Button ResumeGame;
+    private Button Exit;
+    private GameApplication game;
+    private StackPane root2;
+    
+    MainPage(Stage stag){
+        stage =stag;
+        StartGame=new Button("NEW GAME");
+        ResumeGame=new Button("RESUME GAME");
+        Exit=new Button("EXIT");
+        root2=new StackPane();
+       
+        StartGame.setStyle("-fx-background-color: #00ff00");
+        ResumeGame.setStyle("-fx-background-color: #00ff00");
+        Exit.setStyle("-fx-background-color: #00ff00");
+        
+        VBox v=new VBox(30,StartGame,ResumeGame,Exit);
+        
+        root2.getChildren().add(v);
+        root2.setPrefSize(800,800);
+         root2.setStyle("-fx-background-color: black");
+        v.setAlignment(Pos.CENTER);
+       
+        scene=new Scene(root2);
+        stage.setScene(scene);
+        
+        try {
+            start(stage);
+        } catch (Exception ex) {
+            Logger.getLogger(MainPage.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    public Pane getPage(){
+        return root2;
+    }
+    
+    public Button gameStart(){
+        return StartGame;
+    }
+    public Button gameEnd(){
+        return Exit;
+    }
+    
+    
+    
+}
+
+
+class SaveData extends Application{
+    @Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    
+    private double ballX,ballY;
+    //private List<Double> obstacleX;
+   // private List<Double> obstacleY;
+    String data;
+    
+    SaveData(double bx,double by){
+        ballX=bx;
+        ballY=by;
+      //  obstacleX=ox;
+     //   obstacleY=oy;
+        
+        data=String.valueOf(bx)+"\n"+String.valueOf(by)+"\n";
+        String temp;
+       // for(int i=0;i<ox.size();i++){
+     //       temp=String.valueOf(ox.get(i))+" "+String.valueOf(oy.get(i));
+      //      data+=temp+"\n";
+     //   }
+        
+    }
+    
+    public String getData(){
+        return data;
+    }
+    
+   
+    
+}
+
+
+class ResourceManager extends Application{
+    @Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    Stage stage;
+    String data;
+    
+    ResourceManager(Stage s, String d){
+        this.stage=s;
+        this.data=d;
+    }
+    
+    
+    public void handle(){
+      FileChooser fileChooser = new FileChooser();
+ 
+            //Set extension filter for text files
+            FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt");
+            fileChooser.getExtensionFilters().add(extFilter);
+ 
+            //Show save file dialog
+            File file = fileChooser.showSaveDialog(stage);
+           
+            if (file != null) {
+                saveTextToFile(data, file);
+            }}
+    
+    private void saveTextToFile(String content, File file) {
+        try {
+            PrintWriter writer;
+            writer = new PrintWriter(file);
+            writer.println(content);
+            writer.close();
+        } catch (IOException ex) {
+            Logger.getLogger(ResourceManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+}
+
+
+//Star class
+
+class Star extends Application{
+     @Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    
+    private double x;
+    private double y;
+    private Polygon t1,t2;
+    private double a;
+    private boolean done=false;
+    
+    Star(double xx,double yy){
+       
+        x=xx;
+        y=yy;
+        a=20;
+                
+        t1=new Polygon();
+        t1.getPoints().addAll(new Double[]{  
+        x, y -a,  
+        x - (a), y+a,  
+        x,y+(a/2),
+        x + (a)-5, y+a
+        });
+        
+        t1.setFill(Color.WHITE);
+        
+        t2=new Polygon();
+        t2.getPoints().addAll(new Double[]{  
+        x, y +(0.5*a),  
+        x + (a), y-a/3,  
+        x - (a)-3, y-a/3});
+        t2.setFill(Color.WHITE);
+    }
+    
+    public void addStar(Pane pane){
+        pane.getChildren().add(t1);
+        pane.getChildren().add(t2);
+    }
+    
+    public void moveStar(double yy){
+        y=Math.max(y-yy, 0);
+        t1.setTranslateY(t1.getTranslateY()+y);
+        t2.setTranslateY(t2.getTranslateY()+y);
+        y=yy;
+    }
+    
+    public boolean updateScore(Circle c,Text t){
+        if(t1.getBoundsInParent().intersects(c.getBoundsInParent()) && t2.getBoundsInParent().intersects(c.getBoundsInParent()) && !done){
+        String s=t.getText();
+        int d=Integer.parseInt(s.substring(7,s.length()));
+        t.setText("SCORE :"+(d+1));
+        done=true;
+        t1.setVisible(false);
+        t2.setVisible(false);
+        return true;
+        }
+        else{
+            return false;
+        }
+        }
+    
+    public void setStarY(double yy){
+        t1.setTranslateY(yy);
+        t2.setTranslateY(yy);
+    }
+    public void removeFromScreen(){
+        t1.setVisible(false);
+        t2.setVisible(false);
+    }
+}
+
+
+//score class
+class Score extends Application{
+    @Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    
+    private int sc;
+    Text score;
+    
+    Score(int d){
+        sc=d;
+        String s="SCORE :"+sc;
+        score=new Text(s);
+        score.setFont(Font.font("Verdana", FontWeight.BOLD, 25));
+        score.setFill(Color.WHITE);
+      
+        score.setTextOrigin(VPos.TOP);
+    }
+    
+    public Text getScore(){
+        return score;
+    }
+    public int getScoreValue(){
+        String s=score.getText();
+        return Integer.parseInt(s.substring(7,s.length()));
+    }
+    public void setScore(int d){
+        sc=d;
+        String s="SCORE :"+sc;
+        score.setText(s);
+    }
+    public void updateScore(int d){
+     score.setText("SCORE :"+(getScoreValue()+1));
+    }
+    public void reduceScore(int d){
+      score.setText("SCORE :"+(getScoreValue()-d));
+    }
+}
+
+//switch_ball class
+class SwitchBall extends Application{
+    @Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    
+    private Arc c1,c2,c3,c4;
+    private int radius;
+    private double x,y;
+    private char[] color={'r','g','b','y'};
+    private boolean done;
+    SwitchBall(double yy){
+        y=yy;
+        done=false;
+        setRadius(20);
+        c1=new Arc(400, y, radius, radius,90,90);
+        c2=new Arc(400, y, radius, radius,-90,90);
+        c3=new Arc(400, y, radius, radius,90,-90);
+        c4=new Arc(400, y, radius, radius,-90,-90);
+        
+        c1.setType(ArcType.ROUND);
+        c2.setType(ArcType.ROUND);
+        c3.setType(ArcType.ROUND);
+        c4.setType(ArcType.ROUND);
+        
+        c1.setFill(Color.RED);
+        c2.setFill(Color.YELLOW);
+        c3.setFill(Color.BLUE);
+        c4.setFill(Color.GREEN);
+    }
+    
+    public void setRadius(int i){
+        this.radius=i;
+    }
+    
+    public void addSwitchBall(Pane root){
+        root.getChildren().add(c1);
+        root.getChildren().add(c2);
+        root.getChildren().add(c3);
+        root.getChildren().add(c4);
+    }
+    
+    public void move(double yy){
+        y=Math.max(y-yy, 0);
+        setY(y);
+        y=yy;
+    }
+    
+    public void setY(double y){
+        c1.setTranslateY(c1.getTranslateY()+y);
+        c2.setTranslateY(c2.getTranslateY()+y);
+        c3.setTranslateY(c3.getTranslateY()+y);
+        c4.setTranslateY(c4.getTranslateY()+y);
+    }
+    
+    public boolean colorChange(Ball b){
+        if(!done && (b.getCircle().getBoundsInParent().intersects(c1.getBoundsInParent()) || b.getCircle().getBoundsInParent().intersects(c2.getBoundsInParent()) || b.getCircle().getBoundsInParent().intersects(c3.getBoundsInParent()) || b.getCircle().getBoundsInParent().intersects(c4.getBoundsInParent()))){
+          Random rand=new Random();
+          
+          b.setColor(color[rand.nextInt(3)]);
+          c1.setVisible(false);
+          c2.setVisible(false);
+          c3.setVisible(false);
+          c4.setVisible(false);
+          done=true;
+          return true;
+        }
+        else{
+            return false;
+        }
+    }
+    public void removeFromScreen(){
+        c1.setVisible(false);
+        c2.setVisible(false);
+        c3.setVisible(false);
+        c4.setVisible(false);
+    }
+    
+}
+
+//edpage
+class EndPage extends Application{
+     @Override
+    public void start(Stage stage) throws Exception 
+    {   
+        //restart
+        getRestart().setOnAction(e -> {
+        game=new GameApplication(stage,scene);      
+    });
+        //exit
+        getExit().setOnAction(e -> {
+        stage.close();   
+    });
+        //continue
+        getContinue().setOnAction(e -> {
+            if(game.getScore().getScoreValue()<0){
+                System.out.println("you don't have enough stars to continue.minimiun requirement was 5.");
+            }
+            else{
+            GameApplication g= game.clone();
+          scene.setRoot(game.getPage());
+            }
+    });
+    }
+    
+    private Button restart;
+    private Button Continue;
+    private Button Exit;
+    
+    private Stage stage;
+    private StackPane root4;
+    private GameApplication game;
+    private Scene scene;
+    
+    EndPage(Stage stag,GameApplication g){
+        stage=stag;
+        game=g;
+        scene=game.getScene();
+        restart=new Button("RESTART");
+        Continue=new Button("CONTINUE");
+        Exit=new Button("EXIT");
+        root4=new StackPane();
+       
+        restart.setStyle("-fx-background-color: #00ff00");
+        Continue.setStyle("-fx-background-color: #00ff00");
+        Exit.setStyle("-fx-background-color: #00ff00");
+        
+        VBox v=new VBox(30,restart,Continue,Exit);
+        
+        root4.getChildren().add(v);
+        root4.setPrefSize(800,800);
+         root4.setStyle("-fx-background-color: black");
+       v.setAlignment(Pos.CENTER);
+       scene.setRoot(root4);
+        try {
+            start(stage);
+        } catch (Exception ex) {
+            Logger.getLogger(MainPage.class.getName()).log(Level.SEVERE, null, ex);
+        }
+     }
+    
+    public Pane getPage(){
+        return root4;
+    }
+    
+    public Button getRestart(){
+        return restart;
+    }
+    public Button getContinue(){
+        return Continue;
+    }
+    public Button getExit(){
+        return Exit;
+    }
+}
+//baisc 
+class obstacle2 extends Application implements Obstacles{                        //obstacle 2 rectangle
+  @Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    
+    private final double x,y;      //x and y coordinate
+    private double y2=0;
+    private double width,height;       //width and height
+    private Rotate r;
+    Rectangle r1,r2,r3,r4;
+    private int speed;
+    private Ball ball;
+    private double speedDown=100;
+    private final Star star;
+    private final SwitchBall switchball;
+    private char OutColor='g';
+    Rectangle r_R1,r_R2,r_R3,r_R4;
+    
+    public obstacle2(double yy){
+        x=250;
+        y=yy;
+        width=300;
+        height=30;
+        
+       r_R1=new Rectangle(x,y,width,height);
+       r_R1.setFill(Color.GREEN);
+       r_R1.setArcWidth(30);
+       r_R1.setArcHeight(40);
+       
+       r_R2=new Rectangle(x,y,height,width);
+       r_R2.setFill(Color.BLUE);
+       r_R2.setArcWidth(40);
+       r_R2.setArcHeight(30);
+       
+       r_R3=new Rectangle(x,y+width-30,width,height);
+       r_R3.setFill(Color.RED);
+       r_R3.setArcWidth(30);
+       r_R3.setArcHeight(40);
+       
+       r_R4=new Rectangle(x+width-30,y,height,width);
+       r_R4.setFill(Color.YELLOW);
+       r_R4.setArcWidth(40);
+       r_R4.setArcHeight(30);
+       
+       r1=r_R1;
+       r2=r_R2;
+       r3=r_R3;
+       r4=r_R4;
+       
+       star=new Star(x+150,y+150);
+       switchball=new SwitchBall(y-180);
+       
+       RotateSpeed(1);
+       rotate();
+    }
+    
+  @Override
+    public void addObstacle(Pane root){
+       root.getChildren().add(r1);
+       root.getChildren().add(r2); 
+       root.getChildren().add(r3);
+       root.getChildren().add(r4);
+       star.addStar(root);
+       switchball.addSwitchBall(root);
+    }
+  @Override
+    public void setBall(Ball bll){
+        this.ball=bll;
+    }
+    
+  @Override
+    public void rotate(){
+        r=new Rotate();
+        r.setPivotX(x+150);
+        r.setPivotY(y+150);
+        r1.getTransforms().addAll(r);
+        r2.getTransforms().addAll(r);
+        r3.getTransforms().addAll(r);
+        r4.getTransforms().addAll(r);
+    }
+  @Override
+    public void RotateSpeed(int i){
+        this.speed+=i;
+    }
+  @Override
+    public void roll(){
+        r.setAngle(r.getAngle()+this.speed);
+    }
+  @Override
+    public void colorWidth(){
+        System.out.println(1);
+    }
+  @Override
+    public void colorDist(){
+        System.out.println(1);
+    }
+  @Override
+    public void move(double s){
+        speedDown=Math.max(y2-s,0);
+        r1.setTranslateY(r1.getTranslateY()+speedDown);
+        r2.setTranslateY(r2.getTranslateY()+speedDown);
+        r3.setTranslateY(r3.getTranslateY()+speedDown);
+        r4.setTranslateY(r4.getTranslateY()+speedDown);
+        star.moveStar(s);
+        switchball.move(s);
+        y2=s;
+    }
+    
+  @Override
+    public int out(){
+ 
+        if(ball.getCircle().getBoundsInParent().intersects(r2.getBoundsInParent())){
+     // System.out.println("out");
+        return 0;
+    }
+        else if(outCondition2()) {
+           //System.out.println("FALSE");
+           return 1;
+        }
+        else {
+            return -1;
+        }
+    }
+    
+    public double getx(){
+        return x;
+    }
+    public double getY2(){
+        return y;
+    }
+    public void setWidth(double w){
+        width = w;
+    }
+    public double getWidth(){
+        return width;
+    }
+    public Rotate getRotate(){
+        return r;
+    }
+    public Ball getBall(){
+        return ball;
+    }
+    public boolean outCondition2(){
+        double ball_c=ball.getCircle().getCenterY()+ball.getY();
+        double arch_c=r.getPivotY()+getY();
+       double temp=Math.abs(ball_c-arch_c);
+       double ang=r.getAngle()%360;
+       //System.out.println("tmep="+temp+" angle="+ang);
+       
+     if((ball.getCircle().getBoundsInParent().intersects(r1.getBoundsInParent()) || ball.getCircle().getBoundsInParent().intersects(r3.getBoundsInParent()) || ball.getCircle().getBoundsInParent().intersects(r4.getBoundsInParent()))){
+         if(temp>=135 && temp<=160){    
+         if(((ang>135 && ang<180) || (ang>310 && ang<360))){
+             if(ball.getCircle().getBoundsInParent().intersects(r2.getBoundsInParent())){
+                 return false;
+             }
+             else{
+                 return true;
+             }
+            }
+      
+        else{
+            return true;
+            }
+        }
+         else{
+             return false;
+         }
+    }
+    
+    else{
+    return false;
+        }
+     }
+    
+  @Override
+    public void setOutColor(char c){
+        this.OutColor=c;
+         switch (OutColor) {
+            case 'g':
+                r2=r_R1;          //OUT COLOR
+                r1=r_R2;
+                r3=r_R3;
+                r4=r_R4;
+                break;
+            case 'b':
+                r2=r_R2;          //OUT COLOR
+                r1=r_R1;
+                r3=r_R3;
+                r4=r_R4;
+                break;
+            case 'r':
+                r2=r_R3;          //OUT COLOR
+                r1=r_R2;
+                r3=r_R1;
+                r4=r_R4;
+                break;
+            default:
+                r2=r_R4;          //OUT COLOR
+                r1=r_R2;
+                r3=r_R3;
+                r4=r_R1;
+                break;
+        }
+    }
+    
+    public void setY(double y){
+        r1.setTranslateY(r1.getTranslateY()+y);
+        r2.setTranslateY(r2.getTranslateY()+y);
+        r3.setTranslateY(r3.getTranslateY()+y);
+        r4.setTranslateY(r4.getTranslateY()+y);
+    }
+  @Override
+    public void setY2(double y){
+        y2=y;
+    }
+  @Override
+   public double getY(){
+       return r1.getTranslateY();
+   }
+  @Override
+     public Star getStar(){
+        return star;
+    }
+  @Override
+    public SwitchBall getSwitchBall(){
+        return switchball;
+    }
+
+}
+
+//obstacle 3
+//extends
+class obstacle3 extends obstacle2{
+    
+    public obstacle3(double yy) {
+      super(yy);
+       setWidth(200);
+       r3.setX(getx()-getWidth()+30);
+       r3.setY(getY2());
+       r3.setWidth(getWidth());
+       r1.setWidth(getWidth());
+       
+       r4.setY(getY2()-getWidth()+30);
+       r4.setX(getx());
+       r4.setHeight(getWidth());
+       r2.setHeight(getWidth());
+       
+       getRotate().setPivotX(getx());
+       getRotate().setPivotY(getY2());
+    }
+    
+    @Override
+    public int out(){
+ 
+        if(getBall().getCircle().getBoundsInParent().intersects(r2.getBoundsInParent())){
+     //System.out.println("out");
+        return 0;
+    }
+       else if((getBall().getCircle().getBoundsInParent().intersects(r1.getBoundsInParent()) || getBall().getCircle().getBoundsInParent().intersects(r3.getBoundsInParent()) || getBall().getCircle().getBoundsInParent().intersects(r4.getBoundsInParent()))) {
+       //  System.out.println("FALSE");
+          return 1;
+       }
+        else {
+            return -1;
+        }
+    }
+    
+}
+//extended
+class obstacle4 extends obstacle3{
+    
+    public obstacle4(double yy){
+        super(yy);
+        r1.setX(300+r1.getX());
+        r2.setX(300+r2.getX());
+        r3.setX(300+r3.getX());
+        r4.setX(300+r4.getX());
+        getRotate().setPivotX(r1.getX());
+    }
+}
+//basic
+class obstacle5 extends Application implements Obstacles{
+    @Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    private final obstacle4 ob4;
+    private final obstacle3 ob3;
+    private final double y;
+    public obstacle5(double yy){
+        y=yy;
+        ob4=new obstacle4(yy);
+        ob3=new obstacle3(yy);
+        ob3.getRotate().setAngle(180);
+        ob4.getSwitchBall().removeFromScreen();
+        ob4.getStar().removeFromScreen();
+    }
+    
+    @Override
+    public void addObstacle(Pane root){
+        ob4.addObstacle(root);
+        ob3.addObstacle(root);
+    }
+    @Override
+    public void setBall(Ball b){
+        ob4.setBall(b);
+        ob3.setBall(b);
+    }
+    @Override
+    public void roll(){
+        ob4.roll();
+        ob3.roll();
+    }
+    @Override
+    public void colorWidth(){
+        System.out.println(1);
+    }
+    @Override
+    public void colorDist(){
+        System.out.println(1);
+    }
+    @Override
+    public void move(double s){
+        ob3.move(s);
+        ob4.move(s);
+    }
+    @Override
+    public int out(){
+        if(ob3.out() + ob4.out()==2){
+            return 1;
+        }
+        else{
+            return -1;
+        }
+    }
+    @Override
+    public void setOutColor(char c){
+        ob3.setOutColor(c);
+        ob4.setOutColor(c);
+    }
+    @Override
+    public Star getStar(){
+        return ob3.getStar();
+    }
+    @Override
+    public SwitchBall getSwitchBall(){
+        return ob3.getSwitchBall();
+    }
+    @Override
+    public void rotate(){
+        ob3.rotate();
+        ob4.rotate();
+    }
+    @Override
+    public void RotateSpeed(int i){
+        ob3.RotateSpeed(i);
+        ob4.RotateSpeed(i);
+    }
+    @Override
+    public double getY(){
+        return ob3.getY();
+    }
+    @Override
+    public void setY2(double y){
+        ob3.setY2(y);
+        ob4.setY2(y);
+    }
+    
+}
+//basic
+class obstacle6 extends Application implements Obstacles{
+    @Override
+    public void start(Stage stage) throws Exception 
+    {
+        throw new UnsupportedOperationException("Not supported yet."); 
+    }
+    private final obstacle1 ob1;
+    private final obstacle2 ob2;
+    private final double y;
+    public obstacle6(double yy){
+        y=yy;
+        ob1=new obstacle1(yy);
+        ob2=new obstacle2(yy-150);
+        ob2.getRotate().setAngle(45);
+        ob2.getSwitchBall().removeFromScreen();
+        ob2.getStar().removeFromScreen();
+    }
+    
+    @Override
+    public void addObstacle(Pane root){
+        ob1.addObstacle(root);
+        ob2.addObstacle(root);
+    }
+    @Override
+     public void setBall(Ball b){
+        ob1.setBall(b);
+        ob2.setBall(b);
+    }
+    @Override
+    public void roll(){
+        ob1.roll();
+        ob2.roll();
+    }
+    @Override
+    public void colorWidth(){
+        System.out.println(1);
+    }
+    @Override
+    public void colorDist(){
+        System.out.println(1);
+    }
+    @Override
+    public void move(double s){
+        ob1.move(s);
+        ob2.move(s);
+    }
+    @Override
+    public int out(){
+        if(ob1.out() + ob2.out()==2){
+            return 1;
+        }
+        else{
+            return -1;
+        }
+    }
+    @Override
+    public void setOutColor(char c){
+        ob1.setOutColor(c);
+        ob2.setOutColor(c);
+    }
+    @Override
+    public Star getStar(){
+        return ob1.getStar();
+    }
+    @Override
+    public SwitchBall getSwitchBall(){
+        return ob1.getSwitchBall();
+    }
+    @Override
+    public void rotate(){
+        ob2.rotate();
+        ob1.rotate();
+    }
+    @Override
+    public void RotateSpeed(int i){
+        ob1.RotateSpeed(i);
+        ob2.RotateSpeed(i);
+    }
+    @Override
+    public double getY(){
+        return ob1.getY();
+    }
+    @Override
+    public void setY2(double y){
+        ob1.setY2(y);
+        ob2.setY2(y);
+    }
 }
